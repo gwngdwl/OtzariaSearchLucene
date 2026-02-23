@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אוצריא - מנוע חיפוש</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="container glass-panel">
+        <header>
+            <h1>אוצריא <span>חיפוש מתקדם</span></h1>
+            <p>מנוע חיפוש מהיר המבוסס על Lucene.NET</p>
+        </header>
+
+        <section class="search-section">
+            <form id="searchForm">
+                <div class="main-search">
+                    <input type="text" id="searchInput" placeholder="מה תרצה לחפש היום?" required autocomplete="off">
+                    <button type="submit" id="searchBtn">חיפוש</button>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="categoryInput">קטגוריה</label>
+                        <input type="text" id="categoryInput" placeholder="למשל: תלמוד">
+                    </div>
+                    <div class="filter-group">
+                        <label for="bookInput">ספר</label>
+                        <input type="text" id="bookInput" placeholder="למשל: משנה תורה">
+                    </div>
+                    <div class="filter-group">
+                        <label for="limitInput">מספר תוצאות</label>
+                        <input type="number" id="limitInput" value="50" min="1" max="1000">
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <section class="results-section">
+            <div id="stats" class="stats hidden"></div>
+            <div id="loader" class="loader hidden">
+                <div class="spinner"></div>
+                <p>מחפש במאגר...</p>
+            </div>
+            <div id="resultsList" class="results-grid"></div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
