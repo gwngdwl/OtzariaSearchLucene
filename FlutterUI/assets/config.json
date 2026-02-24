@@ -1,0 +1,5 @@
+{
+  "searchEnginePath": "../publish/OtzariaSearch.exe",
+  "indexPath": "../search_index",
+  "defaultResultLimit": 50
+}
