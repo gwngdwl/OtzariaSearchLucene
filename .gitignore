@@ -9,6 +9,7 @@ search_index/
 # IDE
 .vs/
 .vscode/
+.kiro/
 *.user
 *.suo
 
