@@ -6,7 +6,6 @@ using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 using OtzariaSearch.Analyzers;
-using System.Text.RegularExpressions;
 
 namespace OtzariaSearch.Search;
 
@@ -21,9 +20,7 @@ public sealed class SearchEngine : IDisposable
 
     public SearchEngine(string indexPath)
     {
-        if (!System.IO.Directory.Exists(indexPath))
-            throw new DirectoryNotFoundException($"Index directory not found: {indexPath}");
-
+        if (!System.IO.Directory.Exists(indexPath)) throw new DirectoryNotFoundException($"Index directory not found: {indexPath}");
         _indexDir = FSDirectory.Open(indexPath);
         _reader = DirectoryReader.Open(_indexDir);
         _searcher = new IndexSearcher(_reader);
@@ -36,56 +33,22 @@ public sealed class SearchEngine : IDisposable
             return new SearchResults([], 0, TimeSpan.Zero);
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        // Parse the query
-        var parser = new QueryParser(AppLuceneVersion, "content", _analyzer);
-        parser.DefaultOperator = Operator.AND;
-        
-        Query query;
-        try
-        {
-            query = parser.Parse(QueryParserBase.Escape(queryText));
-        }
-        catch
-        {
-            // Fallback: escape special characters
-            query = parser.Parse(QueryParserBase.Escape(queryText));
-        }
-
-        // Apply filters if specified
+        var parser = new QueryParser(AppLuceneVersion, "content", _analyzer) { DefaultOperator = Operator.AND };
+        Query query = parser.Parse(QueryParserBase.Escape(queryText));
         if (!string.IsNullOrWhiteSpace(bookFilter) || !string.IsNullOrWhiteSpace(categoryFilter))
         {
-            var boolQuery = new BooleanQuery
-            {
-                { query, Occur.MUST }
-            };
-
-            if (!string.IsNullOrWhiteSpace(bookFilter))
-            {
-                var bookQuery = new TermQuery(new Term("bookTitle", bookFilter));
-                boolQuery.Add(bookQuery, Occur.MUST);
-            }
-
-            if (!string.IsNullOrWhiteSpace(categoryFilter))
-            {
-                var categoryQuery = new WildcardQuery(new Term("categoryPath", $"*{categoryFilter}*"));
-                boolQuery.Add(categoryQuery, Occur.MUST);
-            }
-
-            query = boolQuery;
+            var filtered = new BooleanQuery { { query, Occur.MUST } };
+            if (!string.IsNullOrWhiteSpace(bookFilter)) filtered.Add(new TermQuery(new Term("bookTitle", bookFilter)), Occur.MUST);
+            if (!string.IsNullOrWhiteSpace(categoryFilter)) filtered.Add(new WildcardQuery(new Term("categoryPath", $"*{categoryFilter}*")), Occur.MUST);
+            query = filtered;
         }
 
         var topDocs = _searcher.Search(query, limit);
-        var results = new List<SearchResult>();
-
-        foreach (var scoreDoc in topDocs.ScoreDocs)
+        var results = topDocs.ScoreDocs.Select(scoreDoc =>
         {
             var doc = _searcher.Doc(scoreDoc.Doc);
-
-            string content = doc.Get("content") ?? "";
-            string snippet = CreateSnippet(content, queryText, 120);
-
-            results.Add(new SearchResult
+            var content = doc.Get("content") ?? "";
+            return new SearchResult
             {
                 LineId = long.Parse(doc.Get("lineId") ?? "0"),
                 BookId = long.Parse(doc.Get("bookId") ?? "0"),
@@ -94,66 +57,41 @@ public sealed class SearchEngine : IDisposable
                 HeRef = doc.Get("heRef") ?? "",
                 LineIndex = int.Parse(doc.Get("lineIndex") ?? "0"),
                 Content = content,
-                Snippet = snippet,
+                Snippet = CreateSnippet(content, queryText, 120),
                 Score = scoreDoc.Score
-            });
-        }
+            };
+        }).ToList();
 
         stopwatch.Stop();
         return new SearchResults(results, topDocs.TotalHits, stopwatch.Elapsed);
     }
 
-    /// <summary>
-    /// Get total number of documents in the index.
-    /// </summary>
     public int TotalDocuments => _reader.NumDocs;
 
     private static string CreateSnippet(string content, string queryText, int contextChars)
     {
-        // Normalize for matching
-        string normalizedContent = HebrewTextUtils.RemoveNikud(content);
-        string normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
-
-        // Find the query words in content
-        string[] queryWords = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        int bestPos = -1;
-        foreach (var word in queryWords)
+        var normalizedContent = HebrewTextUtils.RemoveNikud(content);
+        var normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
+        var bestPos = -1;
+        foreach (var word in normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
-            int pos = normalizedContent.IndexOf(word, StringComparison.OrdinalIgnoreCase);
-            if (pos >= 0)
-            {
-                bestPos = pos;
-                break;
-            }
+            bestPos = normalizedContent.IndexOf(word, StringComparison.OrdinalIgnoreCase);
+            if (bestPos >= 0) break;
         }
-
         if (bestPos < 0)
-        {
-            // No match found, just return beginning
             return content.Length <= contextChars * 2
                 ? content
                 : content[..(contextChars * 2)] + "...";
-        }
 
-        // Extract snippet around the match
-        int start = Math.Max(0, bestPos - contextChars);
-        int end = Math.Min(content.Length, bestPos + contextChars);
-
-        string snippet = content[start..end];
-
+        var start = Math.Max(0, bestPos - contextChars);
+        var end = Math.Min(content.Length, bestPos + contextChars);
+        var snippet = content[start..end];
         if (start > 0) snippet = "..." + snippet;
         if (end < content.Length) snippet += "...";
-
         return snippet;
     }
 
-    public void Dispose()
-    {
-        _reader?.Dispose();
-        _indexDir?.Dispose();
-        _analyzer?.Dispose();
-    }
+    public void Dispose() { _reader.Dispose(); _indexDir.Dispose(); _analyzer.Dispose(); }
 }
 
 public record SearchResults(List<SearchResult> Results, int TotalHits, TimeSpan Elapsed);
