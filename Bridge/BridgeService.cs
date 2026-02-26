@@ -11,11 +11,11 @@ public sealed class BridgeService : IDisposable
     public BridgeService(string indexPath) => _engine = new SearchEngine(indexPath);
     private static string Json(object value) => JsonSerializer.Serialize(value, JsonOptions);
 
-    public string Search(string query, int limit = 50, string? book = null, string? category = null)
+    public string Search(string query, int limit = 50, string? book = null, string? category = null, bool wildcard = false)
     {
         try
         {
-            var results = _engine.Search(query, limit, book, category);
+            var results = _engine.Search(query, limit, book, category, wildcard);
             return Json(new BridgeResponse
             {
                 Status = "success",

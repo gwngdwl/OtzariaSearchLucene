@@ -58,12 +58,14 @@ class ProcessExecutor {
   /// - [limit]: Maximum number of results to return
   /// - [category]: Optional category filter
   /// - [book]: Optional book filter
+  /// - [wildcard]: Enables wildcard query syntax (* and ?)
   List<String> buildSearchArguments({
     required String query,
     required String indexPath,
     required int limit,
     String? category,
     String? book,
+    bool wildcard = false,
   }) {
     final arguments = <String>[
       'search',
@@ -80,6 +82,10 @@ class ProcessExecutor {
 
     if (book != null) {
       arguments.addAll(['--book', book]);
+    }
+
+    if (wildcard) {
+      arguments.add('--wildcard');
     }
 
     return arguments;

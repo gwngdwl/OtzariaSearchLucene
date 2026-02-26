@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/search_metadata.dart';
 import '../../models/search_result.dart';
 import '../state/search_state.dart';
@@ -30,19 +31,45 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  static const String _wildcardPreferenceKey = 'search_wildcard_enabled';
+
   final TextEditingController _searchController = TextEditingController();
   int _resultLimit = 50; // Default result limit
   String? _categoryFilter;
   String? _bookFilter;
+  bool _wildcardEnabled = false;
   bool _isSearchAreaCollapsed = false; // Track if search area is collapsed
 
   @override
   void initState() {
     super.initState();
+    _loadWildcardPreference();
     // Check for configuration errors on screen load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkConfigurationErrors();
     });
+  }
+
+  Future<void> _loadWildcardPreference() async {
+    final preferences = await SharedPreferences.getInstance();
+    final wildcardEnabled =
+        preferences.getBool(_wildcardPreferenceKey) ?? false;
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _wildcardEnabled = wildcardEnabled;
+    });
+  }
+
+  Future<void> _setWildcardEnabled(bool enabled) async {
+    setState(() {
+      _wildcardEnabled = enabled;
+    });
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_wildcardPreferenceKey, enabled);
   }
 
   /// Checks for critical configuration errors and displays an AlertDialog if found.
@@ -179,6 +206,7 @@ class _SearchScreenState extends State<SearchScreen> {
       limit: _resultLimit,
       category: _categoryFilter,
       book: _bookFilter,
+      wildcard: _wildcardEnabled,
     );
 
     // Show SnackBar for transient errors after search completes
@@ -420,6 +448,22 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: SwitchListTile(
+                            key: const Key('wildcard_toggle'),
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Wildcard (*, ?)'),
+                            subtitle: const Text(
+                              'הפעלת חיפוש עם תווי כלליים',
+                            ),
+                            value: _wildcardEnabled,
+                            onChanged: (value) {
+                              _setWildcardEnabled(value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
 
                         // Result limit dropdown and search button row
                         Row(

@@ -6,6 +6,7 @@ using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 using OtzariaSearch.Analyzers;
+using System.Text;
 
 namespace OtzariaSearch.Search;
 
@@ -27,14 +28,19 @@ public sealed class SearchEngine : IDisposable
         _analyzer = new HebrewAnalyzer(AppLuceneVersion);
     }
 
-    public SearchResults Search(string queryText, int limit = 50, string? bookFilter = null, string? categoryFilter = null)
+    public SearchResults Search(string queryText, int limit = 50, string? bookFilter = null, string? categoryFilter = null, bool wildcard = false)
     {
         if (string.IsNullOrWhiteSpace(queryText))
             return new SearchResults([], 0, TimeSpan.Zero);
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var parser = new QueryParser(AppLuceneVersion, "content", _analyzer) { DefaultOperator = Operator.AND };
-        Query query = parser.Parse(QueryParserBase.Escape(queryText));
+        var parser = new QueryParser(AppLuceneVersion, "content", _analyzer)
+        {
+            DefaultOperator = Operator.AND,
+            AllowLeadingWildcard = wildcard
+        };
+        Query query = parser.Parse(BuildQueryInput(queryText, wildcard));
+        var snippetQueryText = wildcard ? BuildSnippetQueryText(queryText) : queryText;
         if (!string.IsNullOrWhiteSpace(bookFilter) || !string.IsNullOrWhiteSpace(categoryFilter))
         {
             var filtered = new BooleanQuery { { query, Occur.MUST } };
@@ -57,7 +63,7 @@ public sealed class SearchEngine : IDisposable
                 HeRef = doc.Get("heRef") ?? "",
                 LineIndex = int.Parse(doc.Get("lineIndex") ?? "0"),
                 Content = content,
-                Snippet = CreateSnippet(content, queryText, 120),
+                Snippet = CreateSnippet(content, snippetQueryText, 120),
                 Score = scoreDoc.Score
             };
         }).ToList();
@@ -67,6 +73,157 @@ public sealed class SearchEngine : IDisposable
     }
 
     public int TotalDocuments => _reader.NumDocs;
+
+    private static string BuildQueryInput(string queryText, bool wildcard)
+    {
+        if (!wildcard)
+            return QueryParserBase.Escape(queryText);
+
+        var normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
+        ValidateWildcardTerms(normalizedQuery);
+        return EscapeLuceneSyntaxExceptWildcards(normalizedQuery);
+    }
+
+    private static void ValidateWildcardTerms(string queryText)
+    {
+        foreach (var term in queryText.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var hasWildcard = false;
+            var hasRegularChars = false;
+            var escaped = false;
+
+            foreach (var c in term)
+            {
+                if (escaped)
+                {
+                    hasRegularChars = true;
+                    escaped = false;
+                    continue;
+                }
+
+                if (c == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if (c is '*' or '?')
+                {
+                    hasWildcard = true;
+                    continue;
+                }
+
+                hasRegularChars = true;
+            }
+
+            if (escaped)
+            {
+                hasRegularChars = true;
+            }
+
+            if (hasWildcard && !hasRegularChars)
+            {
+                throw new ArgumentException($"Invalid wildcard term '{term}'. Wildcard terms must include at least one non-wildcard character.");
+            }
+        }
+    }
+
+    private static string EscapeLuceneSyntaxExceptWildcards(string queryText)
+    {
+        var escaped = new StringBuilder(queryText.Length * 2);
+
+        for (var i = 0; i < queryText.Length; i++)
+        {
+            var c = queryText[i];
+            if (c == '\\')
+            {
+                if (i + 1 < queryText.Length && (queryText[i + 1] == '*' || queryText[i + 1] == '?'))
+                {
+                    escaped.Append('\\');
+                    escaped.Append(queryText[i + 1]);
+                    i++;
+                    continue;
+                }
+
+                escaped.Append("\\\\");
+                continue;
+            }
+
+            if (c is '*' or '?')
+            {
+                escaped.Append(c);
+                continue;
+            }
+
+            if (IsLuceneSpecial(c))
+            {
+                escaped.Append('\\');
+            }
+
+            escaped.Append(c);
+        }
+
+        return escaped.ToString();
+    }
+
+    private static bool IsLuceneSpecial(char c) =>
+        c is '+' or '-' or '&' or '|' or '!' or '(' or ')' or '{' or '}' or '[' or ']' or '^' or '"' or '~' or ':' or '/';
+
+    private static string BuildSnippetQueryText(string queryText)
+    {
+        var normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
+        var terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (terms.Length == 0)
+            return normalizedQuery;
+
+        var snippetTerms = new List<string>(terms.Length);
+        foreach (var term in terms)
+        {
+            var cleaned = StripWildcardOperators(term);
+            if (!string.IsNullOrWhiteSpace(cleaned))
+            {
+                snippetTerms.Add(cleaned);
+            }
+        }
+
+        return snippetTerms.Count == 0 ? normalizedQuery : string.Join(' ', snippetTerms);
+    }
+
+    private static string StripWildcardOperators(string term)
+    {
+        var cleaned = new StringBuilder(term.Length);
+        var escaped = false;
+
+        foreach (var c in term)
+        {
+            if (escaped)
+            {
+                cleaned.Append(c);
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (c is '*' or '?')
+            {
+                continue;
+            }
+
+            cleaned.Append(c);
+        }
+
+        if (escaped)
+        {
+            cleaned.Append('\\');
+        }
+
+        return cleaned.ToString();
+    }
 
     private static string CreateSnippet(string content, string queryText, int contextChars)
     {

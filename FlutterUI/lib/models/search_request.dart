@@ -14,11 +14,15 @@ class SearchRequest {
   /// Optional book filter to search within a specific book.
   final String? book;
 
+  /// Whether wildcard query syntax is enabled for this request.
+  final bool wildcard;
+
   const SearchRequest({
     required this.query,
     this.limit = 50,
     this.category,
     this.book,
+    this.wildcard = false,
   });
 
   /// Returns true if any filters (category or book) are applied.
@@ -35,13 +39,14 @@ class SearchRequest {
           query == other.query &&
           limit == other.limit &&
           category == other.category &&
-          book == other.book;
+          book == other.book &&
+          wildcard == other.wildcard;
 
   @override
-  int get hashCode => Object.hash(query, limit, category, book);
+  int get hashCode => Object.hash(query, limit, category, book, wildcard);
 
   @override
   String toString() =>
       'SearchRequest(query: $query, limit: $limit, '
-      'category: $category, book: $book)';
+      'category: $category, book: $book, wildcard: $wildcard)';
 }

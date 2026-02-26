@@ -15,10 +15,11 @@ var indexOption = StringOpt("--index", "Path to the search index directory", "./
 var limitOption = IntOpt("--limit", "Maximum number of results to return", 50);
 var bookOption = new Option<string?>("--book") { Description = "Filter results by exact book title" };
 var categoryOption = new Option<string?>("--category") { Description = "Filter results by category (partial match)" };
+var wildcardOption = new Option<bool>("--wildcard") { Description = "Enable wildcard query syntax (* and ?)" };
 var infoIndexOption = StringOpt("--index", "Path to the search index directory", "./search_index");
 
 var indexCommand = Cmd("index", "Build search index from the database", parseResult => { var db = parseResult.GetValue(dbOption)!; var output = parseResult.GetValue(outputOption)!; Console.WriteLine($"╔══════════════════════════════════════════╗\n║     OtzariaSearch - Index Builder        ║\n╚══════════════════════════════════════════╝\n\n  Database: {db}\n  Output:   {output}\n"); new IndexBuilder(db, output).Build(); }, dbOption, outputOption);
-var searchCommand = Cmd("search", "Search the indexed library", parseResult => { var query = parseResult.GetValue(queryArgument)!; var indexPath = parseResult.GetValue(indexOption)!; var limit = parseResult.GetValue(limitOption); var book = parseResult.GetValue(bookOption); var category = parseResult.GetValue(categoryOption); using var bridge = new BridgeService(indexPath); Console.WriteLine(bridge.Search(query, limit, book, category)); }, queryArgument, indexOption, limitOption, bookOption, categoryOption);
+var searchCommand = Cmd("search", "Search the indexed library", parseResult => { var query = parseResult.GetValue(queryArgument)!; var indexPath = parseResult.GetValue(indexOption)!; var limit = parseResult.GetValue(limitOption); var book = parseResult.GetValue(bookOption); var category = parseResult.GetValue(categoryOption); var wildcard = parseResult.GetValue(wildcardOption); using var bridge = new BridgeService(indexPath); Console.WriteLine(bridge.Search(query, limit, book, category, wildcard)); }, queryArgument, indexOption, limitOption, bookOption, categoryOption, wildcardOption);
 var infoCommand = Cmd("info", "Show information about the search index", parseResult => { using var bridge = new BridgeService(parseResult.GetValue(infoIndexOption)!); Console.WriteLine(bridge.GetInfo()); }, infoIndexOption);
 
 var rootCommand = new RootCommand("OtzariaSearch - Lucene search engine for the Otzaria book library");

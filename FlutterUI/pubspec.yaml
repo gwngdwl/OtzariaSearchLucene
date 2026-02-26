@@ -41,6 +41,9 @@ dependencies:
   # Path utilities
   path: ^1.9.0
 
+  # Local persistent storage for UI preferences
+  shared_preferences: ^2.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

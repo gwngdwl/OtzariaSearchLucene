@@ -125,6 +125,7 @@ void main() {
           limit: 25,
           category: 'תנ״ך',
           book: 'בראשית',
+          wildcard: true,
         );
 
         expect(mockExecutor.capturedArguments, isNotNull);
@@ -138,6 +139,7 @@ void main() {
         expect(mockExecutor.capturedArguments, contains('תנ״ך'));
         expect(mockExecutor.capturedArguments, contains('--book'));
         expect(mockExecutor.capturedArguments, contains('בראשית'));
+        expect(mockExecutor.capturedArguments, contains('--wildcard'));
       });
 
       test('should return error when process execution fails', () async {
@@ -272,6 +274,18 @@ void main() {
         await searchService.search(query: 'test');
 
         expect(mockExecutor.capturedArguments, isNot(contains('--book')));
+      });
+
+      test('should not include wildcard when not enabled', () async {
+        mockExecutor.mockResult = ProcessResult(
+          stdout: 'Query: test\nTotal Results: 0\nElapsed Time: 10ms\n',
+          stderr: '',
+          exitCode: 0,
+        );
+
+        await searchService.search(query: 'test');
+
+        expect(mockExecutor.capturedArguments, isNot(contains('--wildcard')));
       });
     });
 

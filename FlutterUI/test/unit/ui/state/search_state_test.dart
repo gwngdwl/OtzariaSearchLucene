@@ -24,6 +24,7 @@ class MockSearchService implements SearchService {
     int limit = 50,
     String? category,
     String? book,
+    bool wildcard = false,
   }) async {
     _searchCallCount++;
     _lastSearchParams = {
@@ -31,6 +32,7 @@ class MockSearchService implements SearchService {
       'limit': limit,
       'category': category,
       'book': book,
+      'wildcard': wildcard,
     };
 
     // Simulate async delay
@@ -96,6 +98,7 @@ void main() {
         limit: 25,
         category: 'תנ״ך',
         book: 'בראשית',
+        wildcard: true,
       );
 
       expect(searchState.currentRequest, isNotNull);
@@ -103,6 +106,7 @@ void main() {
       expect(searchState.currentRequest!.limit, 25);
       expect(searchState.currentRequest!.category, 'תנ״ך');
       expect(searchState.currentRequest!.book, 'בראשית');
+      expect(searchState.currentRequest!.wildcard, isTrue);
     });
 
     test('performSearch should update currentResponse', () async {
@@ -144,6 +148,7 @@ void main() {
           limit: 100,
           category: 'תורה',
           book: 'שמות',
+          wildcard: true,
         );
 
         expect(mockService.searchCallCount, 1);
@@ -151,6 +156,7 @@ void main() {
         expect(mockService.lastSearchParams!['limit'], 100);
         expect(mockService.lastSearchParams!['category'], 'תורה');
         expect(mockService.lastSearchParams!['book'], 'שמות');
+        expect(mockService.lastSearchParams!['wildcard'], isTrue);
       },
     );
 
@@ -172,6 +178,7 @@ void main() {
         limit: 50,
         category: 'נביאים',
         book: 'שמואל',
+        wildcard: true,
       );
 
       searchState.clearFilters();
@@ -181,6 +188,7 @@ void main() {
       expect(searchState.currentRequest!.limit, 50);
       expect(searchState.currentRequest!.category, isNull);
       expect(searchState.currentRequest!.book, isNull);
+      expect(searchState.currentRequest!.wildcard, isTrue);
     });
 
     test('clearFilters should notify listeners', () async {
@@ -208,6 +216,7 @@ void main() {
         limit: 50,
         category: 'תנ״ך',
         book: 'מלכים',
+        wildcard: true,
       );
 
       searchState.updateFilters(category: 'כתובים', book: 'משלי');
@@ -217,6 +226,7 @@ void main() {
       expect(searchState.currentRequest!.limit, 50);
       expect(searchState.currentRequest!.category, 'כתובים');
       expect(searchState.currentRequest!.book, 'משלי');
+      expect(searchState.currentRequest!.wildcard, isTrue);
     });
 
     test('updateFilters should allow clearing individual filters', () async {
@@ -325,6 +335,7 @@ class _ThrowingSearchService implements SearchService {
     int limit = 50,
     String? category,
     String? book,
+    bool wildcard = false,
   }) async {
     throw Exception('Test exception');
   }

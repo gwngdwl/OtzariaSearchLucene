@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_ui/ui/screens/search_screen.dart';
 import 'package:flutter_ui/ui/state/search_state.dart';
 import 'package:flutter_ui/services/search_service.dart';
@@ -13,7 +14,9 @@ void main() {
     late SearchService searchService;
     late SearchState searchState;
 
-    setUp(() {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+
       // Initialize services for testing
       final configManager = ConfigurationManager();
       final processExecutor = ProcessExecutor();
@@ -58,6 +61,7 @@ void main() {
 
       // Verify result limit label
       expect(find.text('מספר תוצאות: '), findsOneWidget);
+      expect(find.text('Wildcard (*, ?)'), findsOneWidget);
     });
 
     testWidgets('SearchScreen has correct default result limit', (
@@ -170,6 +174,32 @@ void main() {
 
       // Verify the text was entered
       expect(find.text('תורה'), findsOneWidget);
+    });
+
+    testWidgets('SearchScreen wildcard toggle is disabled by default', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      final toggle = tester.widget<SwitchListTile>(
+        find.byKey(const Key('wildcard_toggle')),
+      );
+      expect(toggle.value, isFalse);
+    });
+
+    testWidgets('SearchScreen loads persisted wildcard preference', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'search_wildcard_enabled': true});
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      final toggle = tester.widget<SwitchListTile>(
+        find.byKey(const Key('wildcard_toggle')),
+      );
+      expect(toggle.value, isTrue);
     });
   });
 }

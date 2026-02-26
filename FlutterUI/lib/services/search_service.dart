@@ -43,6 +43,7 @@ class SearchService {
   /// - [limit]: Maximum number of results to return (default: 50)
   /// - [category]: Optional category filter
   /// - [book]: Optional book filter
+  /// - [wildcard]: Enables wildcard query syntax (* and ?)
   ///
   /// Returns a [SearchResponse] containing results and metadata, or an error message.
   Future<SearchResponse> search({
@@ -50,6 +51,7 @@ class SearchService {
     int limit = 50,
     String? category,
     String? book,
+    bool wildcard = false,
   }) async {
     // Validate query
     if (query.trim().isEmpty) {
@@ -76,6 +78,7 @@ class SearchService {
         limit: limit,
         category: category,
         book: book,
+        wildcard: wildcard,
       );
 
       // Execute the search process

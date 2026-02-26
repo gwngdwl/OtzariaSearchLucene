@@ -118,6 +118,28 @@ void main() {
         expect(args, contains('75'));
         expect(args[args.indexOf('--limit') + 1], '75');
       });
+
+      test('adds wildcard flag when wildcard is enabled', () {
+        final args = executor.buildSearchArguments(
+          query: 'ברא*',
+          indexPath: './index',
+          limit: 50,
+          wildcard: true,
+        );
+
+        expect(args, contains('--wildcard'));
+      });
+
+      test('does not add wildcard flag when wildcard is disabled', () {
+        final args = executor.buildSearchArguments(
+          query: 'ברא*',
+          indexPath: './index',
+          limit: 50,
+          wildcard: false,
+        );
+
+        expect(args, isNot(contains('--wildcard')));
+      });
     });
 
     group('getPlatformExecutableName', () {

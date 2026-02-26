@@ -44,6 +44,7 @@ class SearchState extends ChangeNotifier {
   /// - [limit]: Maximum number of results (default: 50)
   /// - [category]: Optional category filter
   /// - [book]: Optional book filter
+  /// - [wildcard]: Enables wildcard query syntax (* and ?)
   ///
   /// The method ensures notifyListeners is called for all state changes
   /// to keep the UI synchronized.
@@ -52,6 +53,7 @@ class SearchState extends ChangeNotifier {
     int limit = 50,
     String? category,
     String? book,
+    bool wildcard = false,
   }) async {
     // Set loading state and notify listeners
     _isLoading = true;
@@ -64,6 +66,7 @@ class SearchState extends ChangeNotifier {
         limit: limit,
         category: category,
         book: book,
+        wildcard: wildcard,
       );
 
       // Perform search
@@ -72,6 +75,7 @@ class SearchState extends ChangeNotifier {
         limit: limit,
         category: category,
         book: book,
+        wildcard: wildcard,
       );
     } finally {
       // Always clear loading state, even if an error occurs
@@ -94,6 +98,7 @@ class SearchState extends ChangeNotifier {
         limit: _currentRequest!.limit,
         category: null,
         book: null,
+        wildcard: _currentRequest!.wildcard,
       );
       notifyListeners();
     }
@@ -117,6 +122,7 @@ class SearchState extends ChangeNotifier {
         limit: _currentRequest!.limit,
         category: category,
         book: book,
+        wildcard: _currentRequest!.wildcard,
       );
       notifyListeners();
     }

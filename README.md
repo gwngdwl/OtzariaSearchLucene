@@ -36,9 +36,20 @@ dotnet run -- search "שבת" --category "תלמוד"
 # סינון לפי ספר
 dotnet run -- search "תפילין" --book "משנה תורה"
 
+# wildcard search (requires explicit flag)
+dotnet run -- search "ברא*" --wildcard
+
 # מידע על האינדקס
 dotnet run -- info
 ```
+
+### תחביר Wildcard
+
+- `*` - מתאים לכל רצף תווים
+- `?` - מתאים לתו יחיד
+- `\*` או `\?` - חיפוש תו ליטרלי במקום wildcard
+- מצב wildcard מופעל רק עם `--wildcard`
+- מונח wildcard חייב להכיל לפחות תו אחד שאינו wildcard (למשל `*` לבד יוחזר כשגיאה)
 
 ### בניית בינארי יחיד
 
