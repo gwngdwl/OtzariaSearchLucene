@@ -16,7 +16,7 @@ const INDEX_PATH = path.join(__dirname, '..', 'search_index');
 
 app.get('/api/search', (req, res) => {
     const query = req.query.q;
-    const limit = req.query.limit || 50;
+    const limit = req.query.limit || 100000;
     const book = req.query.book;
     const category = req.query.category;
 

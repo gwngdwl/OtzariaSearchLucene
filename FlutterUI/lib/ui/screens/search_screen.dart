@@ -34,7 +34,7 @@ class _SearchScreenState extends State<SearchScreen> {
   static const String _wildcardPreferenceKey = 'search_wildcard_enabled';
 
   final TextEditingController _searchController = TextEditingController();
-  int _resultLimit = 50; // Default result limit
+  int _resultLimit = 100000; // Default result limit
   String? _categoryFilter;
   String? _bookFilter;
   bool _wildcardEnabled = false;
@@ -454,9 +454,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             key: const Key('wildcard_toggle'),
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Wildcard (*, ?)'),
-                            subtitle: const Text(
-                              'הפעלת חיפוש עם תווי כלליים',
-                            ),
+                            subtitle: const Text('הפעלת חיפוש עם תווי כלליים'),
                             value: _wildcardEnabled,
                             onChanged: (value) {
                               _setWildcardEnabled(value);
@@ -492,6 +490,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                       DropdownMenuItem(
                                         value: 100,
                                         child: Text('100'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 100000,
+                                        child: Text('הכל'),
                                       ),
                                     ],
                                     onChanged: (value) {

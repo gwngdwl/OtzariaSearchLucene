@@ -12,7 +12,7 @@ var dbOption = StringOpt("--db", "Path to seforim.db database file", required: t
 var outputOption = StringOpt("--output", "Output directory for the search index", "./search_index");
 var queryArgument = new Argument<string>("query") { Description = "Search query text" };
 var indexOption = StringOpt("--index", "Path to the search index directory", "./search_index");
-var limitOption = IntOpt("--limit", "Maximum number of results to return", 50);
+var limitOption = IntOpt("--limit", "Maximum number of results to return", 100000);
 var bookOption = new Option<string?>("--book") { Description = "Filter results by exact book title" };
 var categoryOption = new Option<string?>("--category") { Description = "Filter results by category (partial match)" };
 var wildcardOption = new Option<bool>("--wildcard") { Description = "Enable wildcard query syntax (* and ?)" };

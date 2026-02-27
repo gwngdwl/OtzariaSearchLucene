@@ -41,7 +41,7 @@ class SearchState extends ChangeNotifier {
   ///
   /// Parameters:
   /// - [query]: The search query text (required)
-  /// - [limit]: Maximum number of results (default: 50)
+  /// - [limit]: Maximum number of results (default: 100000)
   /// - [category]: Optional category filter
   /// - [book]: Optional book filter
   /// - [wildcard]: Enables wildcard query syntax (* and ?)
@@ -50,7 +50,7 @@ class SearchState extends ChangeNotifier {
   /// to keep the UI synchronized.
   Future<void> performSearch({
     required String query,
-    int limit = 50,
+    int limit = 100000,
     String? category,
     String? book,
     bool wildcard = false,

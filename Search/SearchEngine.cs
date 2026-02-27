@@ -28,7 +28,7 @@ public sealed class SearchEngine : IDisposable
         _analyzer = new HebrewAnalyzer(AppLuceneVersion);
     }
 
-    public SearchResults Search(string queryText, int limit = 50, string? bookFilter = null, string? categoryFilter = null, bool wildcard = false)
+    public SearchResults Search(string queryText, int limit = 100000, string? bookFilter = null, string? categoryFilter = null, bool wildcard = false)
     {
         if (string.IsNullOrWhiteSpace(queryText))
             return new SearchResults([], 0, TimeSpan.Zero);
