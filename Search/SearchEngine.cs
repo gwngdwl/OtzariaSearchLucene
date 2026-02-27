@@ -3,6 +3,7 @@ using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.QueryParsers.Classic;
 using Lucene.Net.Search;
+using Lucene.Net.Search.Highlight;
 using Lucene.Net.Store;
 using Lucene.Net.Util;
 using OtzariaSearch.Analyzers;
@@ -40,7 +41,6 @@ public sealed class SearchEngine : IDisposable
             AllowLeadingWildcard = wildcard
         };
         Query query = parser.Parse(BuildQueryInput(queryText, wildcard));
-        var snippetQueryText = wildcard ? BuildSnippetQueryText(queryText) : queryText;
         if (!string.IsNullOrWhiteSpace(bookFilter) || !string.IsNullOrWhiteSpace(categoryFilter))
         {
             var filtered = new BooleanQuery { { query, Occur.MUST } };
@@ -50,10 +50,33 @@ public sealed class SearchEngine : IDisposable
         }
 
         var topDocs = _searcher.Search(query, limit);
+
+        // Set up Lucene Highlighter
+        var scorer = new QueryScorer(query, "content");
+        var formatter = new SimpleHTMLFormatter("<mark>", "</mark>");
+        var highlighter = new Highlighter(formatter, scorer)
+        {
+            TextFragmenter = new SimpleSpanFragmenter(scorer, 240)
+        };
+
         var results = topDocs.ScoreDocs.Select(scoreDoc =>
         {
             var doc = _searcher.Doc(scoreDoc.Doc);
             var content = doc.Get("content") ?? "";
+
+            // Use Lucene Highlighter for snippet generation
+            string snippet;
+            try
+            {
+                var tokenStream = _analyzer.GetTokenStream("content", content);
+                var highlighted = highlighter.GetBestFragment(tokenStream, content);
+                snippet = highlighted ?? (content.Length <= 240 ? content : content[..240] + "...");
+            }
+            catch
+            {
+                snippet = content.Length <= 240 ? content : content[..240] + "...";
+            }
+
             return new SearchResult
             {
                 LineId = long.Parse(doc.Get("lineId") ?? "0"),
@@ -63,7 +86,7 @@ public sealed class SearchEngine : IDisposable
                 HeRef = doc.Get("heRef") ?? "",
                 LineIndex = int.Parse(doc.Get("lineIndex") ?? "0"),
                 Content = content,
-                Snippet = CreateSnippet(content, snippetQueryText, 120),
+                Snippet = snippet,
                 Score = scoreDoc.Score
             };
         }).ToList();
@@ -168,85 +191,6 @@ public sealed class SearchEngine : IDisposable
 
     private static bool IsLuceneSpecial(char c) =>
         c is '+' or '-' or '&' or '|' or '!' or '(' or ')' or '{' or '}' or '[' or ']' or '^' or '"' or '~' or ':' or '/';
-
-    private static string BuildSnippetQueryText(string queryText)
-    {
-        var normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
-        var terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (terms.Length == 0)
-            return normalizedQuery;
-
-        var snippetTerms = new List<string>(terms.Length);
-        foreach (var term in terms)
-        {
-            var cleaned = StripWildcardOperators(term);
-            if (!string.IsNullOrWhiteSpace(cleaned))
-            {
-                snippetTerms.Add(cleaned);
-            }
-        }
-
-        return snippetTerms.Count == 0 ? normalizedQuery : string.Join(' ', snippetTerms);
-    }
-
-    private static string StripWildcardOperators(string term)
-    {
-        var cleaned = new StringBuilder(term.Length);
-        var escaped = false;
-
-        foreach (var c in term)
-        {
-            if (escaped)
-            {
-                cleaned.Append(c);
-                escaped = false;
-                continue;
-            }
-
-            if (c == '\\')
-            {
-                escaped = true;
-                continue;
-            }
-
-            if (c is '*' or '?')
-            {
-                continue;
-            }
-
-            cleaned.Append(c);
-        }
-
-        if (escaped)
-        {
-            cleaned.Append('\\');
-        }
-
-        return cleaned.ToString();
-    }
-
-    private static string CreateSnippet(string content, string queryText, int contextChars)
-    {
-        var normalizedContent = HebrewTextUtils.RemoveNikud(content);
-        var normalizedQuery = HebrewTextUtils.RemoveNikud(queryText);
-        var bestPos = -1;
-        foreach (var word in normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            bestPos = normalizedContent.IndexOf(word, StringComparison.OrdinalIgnoreCase);
-            if (bestPos >= 0) break;
-        }
-        if (bestPos < 0)
-            return content.Length <= contextChars * 2
-                ? content
-                : content[..(contextChars * 2)] + "...";
-
-        var start = Math.Max(0, bestPos - contextChars);
-        var end = Math.Min(content.Length, bestPos + contextChars);
-        var snippet = content[start..end];
-        if (start > 0) snippet = "..." + snippet;
-        if (end < content.Length) snippet += "...";
-        return snippet;
-    }
 
     public void Dispose() { _reader.Dispose(); _indexDir.Dispose(); _analyzer.Dispose(); }
 }

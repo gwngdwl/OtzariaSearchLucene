@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../models/highlight_span.dart';
 import '../models/parsed_output.dart';
 import '../models/search_metadata.dart';
 import '../models/search_result.dart';
@@ -67,15 +68,16 @@ class OutputParser {
       final resultsList = json['results'] as List<dynamic>? ?? [];
       final results = resultsList.map((item) {
         final map = item as Map<String, dynamic>;
+        final rawSnippet = map['snippet'] as String? ?? '';
+        final parsed = _parseMarkTags(rawSnippet);
         return SearchResult(
           rank: map['rank'] as int? ?? 0,
           bookTitle: map['bookTitle'] as String? ?? '',
           reference: map['heRef'] as String? ?? '',
           category: map['categoryPath'] as String? ?? '',
-          snippet: map['snippet'] as String? ?? '',
+          snippet: parsed.plainText,
           score: (map['score'] as num?)?.toDouble() ?? 0.0,
-          highlights:
-              const [], // highlights can be computed client-side if needed
+          highlights: parsed.highlights,
         );
       }).toList();
 
@@ -85,5 +87,39 @@ class OutputParser {
     } catch (e) {
       return ParsedOutput.error('שגיאה בפענוח הפלט: ${e.toString()}');
     }
+  }
+
+  /// Parses `<mark>...</mark>` tags from a snippet string.
+  ///
+  /// Returns a record with the plain text (tags stripped) and a list of
+  /// [HighlightSpan] objects indicating the highlighted ranges.
+  static ({String plainText, List<HighlightSpan> highlights}) _parseMarkTags(
+    String snippet,
+  ) {
+    final markPattern = RegExp(r'<mark>(.*?)</mark>', caseSensitive: false);
+    final highlights = <HighlightSpan>[];
+    final buffer = StringBuffer();
+    int lastEnd = 0;
+
+    for (final match in markPattern.allMatches(snippet)) {
+      // Append text before this match
+      buffer.write(snippet.substring(lastEnd, match.start));
+      final highlightStart = buffer.length;
+      final highlightText = match.group(1) ?? '';
+      buffer.write(highlightText);
+      highlights.add(
+        HighlightSpan(
+          start: highlightStart,
+          end: highlightStart + highlightText.length,
+          text: highlightText,
+        ),
+      );
+      lastEnd = match.end;
+    }
+
+    // Append remaining text after last match
+    buffer.write(snippet.substring(lastEnd));
+
+    return (plainText: buffer.toString(), highlights: highlights);
   }
 }

@@ -70,19 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = 'result-card';
             card.style.animationDelay = `${index * 0.05}s`;
 
-            // Parse highlight
-            // The console output uses console colors, but we removed them or just have raw text.
-            // We'll highlight the search query terms manually in CSS if they match, or just show the snippet.
+            // Snippet already contains <mark>...</mark> tags from Lucene Highlighter
             let snippetHtml = hit.snippet;
-
-            // Basic highlight injection for web (case insensitive replace)
-            const queryWords = data.meta.query.replace(/['"]/g, '').split(' ');
-            queryWords.forEach(word => {
-                if (word.length > 1) {
-                    const regex = new RegExp(`(${word})`, 'gi');
-                    snippetHtml = snippetHtml.replace(regex, '<mark>$1</mark>');
-                }
-            });
 
             card.innerHTML = `
                 <div class="result-header">
